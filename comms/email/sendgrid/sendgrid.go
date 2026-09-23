@@ -30,11 +30,16 @@ type Client struct {
 	fromName    string
 }
 
-func (c *Client) Send(to []string, message json.RawMessage, tpl email.TplID) error {
+// Compile-time guarantee that the SendGrid client satisfies email.MailProvider.
+var _ email.MailProvider = (*Client)(nil)
 
-	// create personalization
+func (c *Client) Send(to, cc []string, message json.RawMessage, tpl email.TplID) error {
+
+	// create personalization: To and CC share one personalization so they
+	// are delivered as a single email, as CC recipients expect.
 	p := mail.NewPersonalization().
-		AddTos(to...)
+		AddTos(to...).
+		AddCCs(cc...)
 
 	// create the email
 	m := mail.NewV3Mail().
