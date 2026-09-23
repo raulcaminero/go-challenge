@@ -16,11 +16,17 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) Send(to []string, message json.RawMessage, tplID email.TplID) error {
+// Compile-time guarantee that the mock satisfies email.MailProvider.
+var _ email.MailProvider = (*Client)(nil)
+
+// Send records one log entry per To recipient. Each entry carries the full CC
+// list so tests can assert who was copied on the message that recipient saw.
+func (c *Client) Send(to, cc []string, message json.RawMessage, tplID email.TplID) error {
 
 	for _, v := range to {
 		c.sendLogs = append(c.sendLogs, SendLog{
 			to:      v,
+			cc:      append([]string(nil), cc...),
 			message: message,
 			tplID:   tplID,
 		})

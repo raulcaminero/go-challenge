@@ -8,12 +8,22 @@ import (
 
 type SendLog struct {
 	to      string
+	cc      []string
 	tplID   email.TplID
 	message json.RawMessage
 }
 
 func (sl *SendLog) ExtractTo() string {
 	return sl.to
+}
+
+// ExtractCC returns the carbon-copy recipients recorded with this send.
+// It is never nil, so callers can compare lengths without a nil check.
+func (sl *SendLog) ExtractCC() []string {
+	if sl.cc == nil {
+		return []string{}
+	}
+	return sl.cc
 }
 
 func (sl *SendLog) ExtractTplID() email.TplID {
