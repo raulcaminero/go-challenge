@@ -30,12 +30,23 @@ type Request struct {
 }
 
 func NewProducer(emailProvider email.MailProvider) *Producer {
-	return &Producer{
-		email: emailProvider,
-		topicBuilders: map[string]TopicRequestBuilder{
-			docUploadTopicBuilder{}.Topic(): docUploadTopicBuilder{},
-			otpLoginTopicBuilder{}.Topic():  otpLoginTopicBuilder{},
-		},
+	p := &Producer{
+		email:         emailProvider,
+		topicBuilders: map[string]TopicRequestBuilder{},
+	}
+	p.register(
+		docUploadTopicBuilder{},
+		otpLoginTopicBuilder{},
+		policyRenewalTopicBuilder{},
+	)
+	return p
+}
+
+// register indexes builders by their own Topic() so a topic can never be
+// registered under a mismatched key.
+func (p *Producer) register(builders ...TopicRequestBuilder) {
+	for _, builder := range builders {
+		p.topicBuilders[builder.Topic()] = builder
 	}
 }
 
@@ -52,8 +63,8 @@ func (p *Producer) NotifyTopic(ctx context.Context, topic string, input any) err
 }
 
 func (p *Producer) Notify(_ context.Context, req Request) error {
-	if len(req.Recipients) == 0 {
-		return fmt.Errorf("notification requires recipient")
+	if err := email.RequireRecipient(req.Recipients); err != nil {
+		return fmt.Errorf("notification %q: %w", req.Topic, err)
 	}
 	return p.email.Send(req.Recipients, req.Template, req.Vars)
 }
